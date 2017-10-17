@@ -1,0 +1,9 @@
+---
+applications:
+- name: cf-redis-benchmark
+  memory: 512M
+  instances: 1
+  env:
+    SPACE_GUID: 027dc50a-5bfa-4295-8ef7-bd836634627e
+    SERVICE_PLAN_GUID: 69d653c2-229e-4609-b5d4-5ad3b08558b4
+    GOPACKAGENAME: main
