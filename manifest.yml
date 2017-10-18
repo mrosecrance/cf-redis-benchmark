@@ -5,5 +5,8 @@ applications:
   instances: 1
   env:
     SPACE_GUID: 027dc50a-5bfa-4295-8ef7-bd836634627e
-    SERVICE_PLAN_GUID: 69d653c2-229e-4609-b5d4-5ad3b08558b4
+    SERVICE_PLAN_GUID: 482d2a83-f7df-45e1-8bc2-95a7ecc617c5 # GUID of dedicated-vm plan of p-redis-150049303
+    INSTANCE_FOR_BINDING_GUID: 570ab3f4-8446-483c-a80c-09360959650b
     GOPACKAGENAME: main
+#    remember to cf set-env CF_USERNAME and CF_PASSWORD
+

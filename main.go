@@ -7,6 +7,8 @@ import (
 	"os"
 	"net/http"
 	"github.com/gorilla/mux"
+	"bytes"
+	"encoding/json"
 )
 
 func main() {
@@ -18,8 +20,11 @@ func main() {
 
 	for i:=0; i<=5; i++ {
 		time.Sleep(1000 * time.Millisecond)
-		createDedicatedServiceInstance(client, i)
+		serviceName := fmt.Sprintf("cf-redis-benchmark-%d", i)
+		go createDedicatedServiceInstance(client, serviceName)
 	}
+
+	bindToServiceInstance(client)
 
 
 	router := mux.NewRouter()
@@ -37,10 +42,13 @@ func createCfClient() (*cf.Client, error) {
 	return cf.NewClient(c)
 }
 
-func createDedicatedServiceInstance(c *cf.Client, serviceIndex int) {
-	fmt.Println("creating instance")
+func createDedicatedServiceInstance(c *cf.Client, serviceName string) {
+	//test that instance creations don't wait on each other
+	time.Sleep(1 * time.Second)
 
-	serviceName := fmt.Sprintf("cf-redis-benchmark-%d", serviceIndex)
+	fmt.Println(fmt.Sprintf("creating instance %s", serviceName))
+
+	//
 
 	req := cf.ServiceInstanceRequest{
 		Name:            serviceName,
@@ -48,7 +56,7 @@ func createDedicatedServiceInstance(c *cf.Client, serviceIndex int) {
 		ServicePlanGuid: os.Getenv("SERVICE_PLAN_GUID"),
 	}
 	startTime := time.Now()
-	_, err := c.CreateServiceInstance(req)
+	serviceInstance, err := c.CreateServiceInstance(req)
 	provisionDuration := time.Since(startTime)
 
 	commonInfoString := fmt.Sprintf("create service %s request at %s took %s and", serviceName,
@@ -59,11 +67,40 @@ func createDedicatedServiceInstance(c *cf.Client, serviceIndex int) {
 	if err != nil {
 		fmt.Println(fmt.Sprintf("%s failed with error: %s", commonInfoString, err.Error()))
 	} else {
-		fmt.Println(fmt.Sprintf("%s succeeded", commonInfoString))
+		fmt.Println(fmt.Sprintf("%s succeeded creating instance with GUID: %s", commonInfoString, serviceInstance.Guid))
 	}
 
+	// now delete the service instance:
+	//requestURL := "/v2/service_instances/1aaeb02d-16c3-4405-bc41-80e83d196dff?accepts_incomplete=true"
+	//r := c.NewRequest("DELETE", requestURL)
+	//response, err := c.DoRequest(r)
 
+}
 
+type ServiceKeyRequest struct {
+	Name            string `json:"name"`
+	ServiceInstanceGuid       string `json:"service_instance_guid"`
+}
+
+func bindToServiceInstance(c *cf.Client) error {
+
+	serviceKeyRequest := ServiceKeyRequest{Name:"myKey", ServiceInstanceGuid: os.Getenv("INSTANCE_FOR_BINDING_GUID")}
+	buf := bytes.NewBuffer(nil)
+	err := json.NewEncoder(buf).Encode(serviceKeyRequest)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Request buffer encoding failed with error: %s", err.Error()))
+		return err
+	}
+
+	r := c.NewRequestWithBody("POST", "/v2/service_keys", buf)
+
+	startTime := time.Now()
+	_, err = c.DoRequest(r)
+	bindDuration := time.Since(startTime)
+
+	fmt.Println(bindDuration)
+
+	return nil
 }
 
 func getPort() string {
