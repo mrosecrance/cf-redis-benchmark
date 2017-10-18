@@ -16,7 +16,11 @@ func main() {
 		return
 	}
 
-	createDedicatedServiceInstance(client)
+	for i:=0; i<=5; i++ {
+		time.Sleep(1000 * time.Millisecond)
+		createDedicatedServiceInstance(client, i)
+	}
+
 
 	router := mux.NewRouter()
 	if err := http.ListenAndServe(fmt.Sprintf(":%v", getPort()), router); err != nil {
@@ -26,42 +30,39 @@ func main() {
 func createCfClient() (*cf.Client, error) {
 	c := &cf.Config{
 		ApiAddress: "https://api.sys.pikachu.gcp.london.cf-app.com",
-		Username:   "admin",
-		Password:   "replace!!!!!!!!!!!!!!!!!!",
+		Username:  os.Getenv("CF_USERNAME"),
+		Password:   os.Getenv("CF_PASSWORD"),
 		SkipSslValidation: true,
 	}
 	return cf.NewClient(c)
 }
 
-func createDedicatedServiceInstance(c *cf.Client) {
+func createDedicatedServiceInstance(c *cf.Client, serviceIndex int) {
 	fmt.Println("creating instance")
 
+	serviceName := fmt.Sprintf("cf-redis-benchmark-%d", serviceIndex)
+
 	req := cf.ServiceInstanceRequest{
-		Name:            fmt.Sprintf("cf-redis-benchmark-%s", "testtrinasdf"),
+		Name:            serviceName,
 		SpaceGuid:       os.Getenv("SPACE_GUID"),
 		ServicePlanGuid: os.Getenv("SERVICE_PLAN_GUID"),
 	}
 	startTime := time.Now()
-	serviceInstance, err := c.CreateServiceInstance(req)
-	duration := time.Since(startTime)
+	_, err := c.CreateServiceInstance(req)
+	provisionDuration := time.Since(startTime)
 
-	fmt.Println("request sent")
-	fmt.Println(duration)
+	commonInfoString := fmt.Sprintf("create service %s request at %s took %s and", serviceName,
+		startTime,
+		provisionDuration)
 
-	instances, err := c.ListServiceInstances()
-
-	if err != nil {
-		fmt.Println("failed to list instances")
-	}
-
-	fmt.Println(instances)
 
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to create instance with err: %s, in time: %f", err.Error(), duration))
+		fmt.Println(fmt.Sprintf("%s failed with error: %s", commonInfoString, err.Error()))
 	} else {
-		fmt.Println(fmt.Sprintf("Succeeded creating instance: %s with guid: %s, in time: %s",
-			serviceInstance.Name, serviceInstance.Guid, duration.String()))
+		fmt.Println(fmt.Sprintf("%s succeeded", commonInfoString))
 	}
+
+
 
 }
 
