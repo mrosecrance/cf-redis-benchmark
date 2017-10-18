@@ -8,5 +8,6 @@ applications:
     SERVICE_PLAN_GUID: 482d2a83-f7df-45e1-8bc2-95a7ecc617c5 # GUID of dedicated-vm plan of p-redis-150049303
     INSTANCE_FOR_BINDING_GUID: 570ab3f4-8446-483c-a80c-09360959650b
     GOPACKAGENAME: main
+    SERVICE_KEY_PASSWORD: abf84ee8-8fb1-4aaf-a123-71f0960be4db
+    SERVICE_KEY_ADDR: "10.0.8.59:6379"
 #    remember to cf set-env CF_USERNAME and CF_PASSWORD
-

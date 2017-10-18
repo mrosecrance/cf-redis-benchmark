@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"bytes"
 	"encoding/json"
+	"gopkg.in/redis.v5"
 )
 
 func main() {
@@ -24,8 +25,9 @@ func main() {
 		go createDedicatedServiceInstance(client, serviceName)
 	}
 
-	bindToServiceInstance(client)
+	createServiceKey(client)
 
+	readFromRedisInstance()
 
 	router := mux.NewRouter()
 	if err := http.ListenAndServe(fmt.Sprintf(":%v", getPort()), router); err != nil {
@@ -48,7 +50,6 @@ func createDedicatedServiceInstance(c *cf.Client, serviceName string) {
 
 	fmt.Println(fmt.Sprintf("creating instance %s", serviceName))
 
-	//
 
 	req := cf.ServiceInstanceRequest{
 		Name:            serviceName,
@@ -70,10 +71,10 @@ func createDedicatedServiceInstance(c *cf.Client, serviceName string) {
 		fmt.Println(fmt.Sprintf("%s succeeded creating instance with GUID: %s", commonInfoString, serviceInstance.Guid))
 	}
 
-	// now delete the service instance:
-	//requestURL := "/v2/service_instances/1aaeb02d-16c3-4405-bc41-80e83d196dff?accepts_incomplete=true"
+	//// Delete the service instance:
+	//requestURL := "/v2/service_instances/serviceName?accepts_incomplete=true"
 	//r := c.NewRequest("DELETE", requestURL)
-	//response, err := c.DoRequest(r)
+	//_, err = c.DoRequest(r)
 
 }
 
@@ -82,7 +83,7 @@ type ServiceKeyRequest struct {
 	ServiceInstanceGuid       string `json:"service_instance_guid"`
 }
 
-func bindToServiceInstance(c *cf.Client) error {
+func createServiceKey(c *cf.Client) error {
 
 	serviceKeyRequest := ServiceKeyRequest{Name:"myKey", ServiceInstanceGuid: os.Getenv("INSTANCE_FOR_BINDING_GUID")}
 	buf := bytes.NewBuffer(nil)
@@ -96,11 +97,35 @@ func bindToServiceInstance(c *cf.Client) error {
 
 	startTime := time.Now()
 	_, err = c.DoRequest(r)
-	bindDuration := time.Since(startTime)
+	duration := time.Since(startTime)
 
-	fmt.Println(bindDuration)
+	fmt.Printf("service-key creation duration: %s\n", duration)
 
 	return nil
+}
+
+
+func readFromRedisInstance () {
+	options := redis.Options{
+		Addr:os.Getenv("SERVICE_KEY_ADDR"),//host:port
+		Password:os.Getenv("SERVICE_KEY_PASSWORD"),
+	}
+	redisClient := redis.NewClient(&options)
+
+	startTime := time.Now()
+	status := redisClient.Set("fooKey2", "barValue", 0)
+	duration := time.Since(startTime)
+
+	fmt.Println(fmt.Sprintf("redis set command status:%s", status.String()))
+	fmt.Printf("write duration: %s\n", duration)
+
+	startTime = time.Now()
+	stat := redisClient.Get("fooKey2")
+	duration = time.Since(startTime)
+
+	fmt.Println(fmt.Sprintf("redis get command status:%s", stat.String()))
+	fmt.Printf("read duration: %s\n", duration)
+
 }
 
 func getPort() string {

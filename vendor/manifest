@@ -112,6 +112,14 @@
 			"branch": "master",
 			"path": "/urlfetch",
 			"notests": true
+		},
+		{
+			"importpath": "gopkg.in/redis.v5",
+			"repository": "https://gopkg.in/redis.v5",
+			"vcs": "git",
+			"revision": "a16aeec10ff407b1e7be6dd35797ccf5426ef0f0",
+			"branch": "master",
+			"notests": true
 		}
 	]
 }
